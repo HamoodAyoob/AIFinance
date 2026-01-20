@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.Python
+*.egg-info/
+
+# Virtual Environment
+venv/
+env/
+.venv
+
+# Environment Variables (IMPORTANT - Contains API Keys!)
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Machine Learning Models (Auto-generated)
+app/ml_models/saved_models/*.pkl
+app/ml_models/saved_models/*.joblib
+
+# Node (Frontend)
+node_modules/
+package-lock.json
+
+# Build
+dist/
+build/
