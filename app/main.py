@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import auth, users, ml, market, accounts, transactions, budgets
+from app.api.v1 import auth, users, ml, market, accounts, transactions, budgets, currency
 
 # Import models to register them with SQLAlchemy
 from app.models import user, prediction, account, transaction, budget
@@ -133,6 +133,12 @@ app.include_router(
     budgets.router,
     prefix=f"{settings.API_V1_STR}/budgets",
     tags=["Budgets"]
+)
+
+app.include_router(
+    currency.router,
+    prefix=f"{settings.API_V1_STR}/currency",
+    tags=["Currency"]
 )
 
 
