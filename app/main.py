@@ -8,10 +8,10 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.v1 import auth, users, ml, market
+from app.api.v1 import auth, users, ml, market, accounts, transactions, budgets
 
 # Import models to register them with SQLAlchemy
-from app.models import user, prediction
+from app.models import user, prediction, account, transaction, budget
 
 
 @asynccontextmanager
@@ -116,33 +116,24 @@ app.include_router(
 )
 
 
-# Note for Person B: Add your routers here
-# Example:
-# from app.api.v1 import transactions, accounts, budgets, currency
-# 
-# app.include_router(
-#     transactions.router,
-#     prefix=f"{settings.API_V1_STR}/transactions",
-#     tags=["Transactions"]
-# )
-# 
-# app.include_router(
-#     accounts.router,
-#     prefix=f"{settings.API_V1_STR}/accounts",
-#     tags=["Accounts"]
-# )
-# 
-# app.include_router(
-#     budgets.router,
-#     prefix=f"{settings.API_V1_STR}/budgets",
-#     tags=["Budgets"]
-# )
-# 
-# app.include_router(
-#     currency.router,
-#     prefix=f"{settings.API_V1_STR}/currency",
-#     tags=["Currency"]
-# )
+# Person B's routers
+app.include_router(
+    accounts.router,
+    prefix=f"{settings.API_V1_STR}/accounts",
+    tags=["Accounts"]
+)
+
+app.include_router(
+    transactions.router,
+    prefix=f"{settings.API_V1_STR}/transactions",
+    tags=["Transactions"]
+)
+
+app.include_router(
+    budgets.router,
+    prefix=f"{settings.API_V1_STR}/budgets",
+    tags=["Budgets"]
+)
 
 
 if __name__ == "__main__":
