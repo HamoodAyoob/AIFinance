@@ -53,10 +53,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
+# Configure CORS - FIXED: Handle both string and list formats
+origins = settings.BACKEND_CORS_ORIGINS
+if isinstance(origins, str):
+    # If it's a string, try to parse it as JSON
+    import json
+    try:
+        origins = json.loads(origins)
+    except json.JSONDecodeError:
+        # If not valid JSON, split by comma
+        origins = [origin.strip() for origin in origins.strip('[]').split(',')]
+
+# Ensure we have a list
+if not isinstance(origins, list):
+    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
