@@ -50,8 +50,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         preferred_currency=user_in.preferred_currency,
         is_active=True,
         is_superuser=False,
-        created_at=datetime.now(),
-        last_login=None
+        created_at=datetime.now()
     )
     
     db.add(db_user)

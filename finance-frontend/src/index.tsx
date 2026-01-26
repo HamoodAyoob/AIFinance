@@ -25,7 +25,7 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter> {/* Add BrowserRouter here */}
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
@@ -34,6 +34,6 @@ root.render(
           </AnimatePresence>
         </ThemeProvider>
       </QueryClientProvider>
-    </BrowserRouter> {/* Close BrowserRouter here */}
+    </BrowserRouter> 
   </React.StrictMode>
 );

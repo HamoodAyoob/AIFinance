@@ -4,14 +4,13 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
 
-
 # Create database engine
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,  # Verify connections before using
     pool_size=10,  # Number of connections to maintain
     max_overflow=20,  # Additional connections when pool is full
-    echo=settings.DEBUG  # Log SQL queries in debug mode
+    echo=settings.DEBUG,  # Log SQL queries in debug mode
 )
 
 # Create SessionLocal class
@@ -23,6 +22,7 @@ Base = declarative_base()
 from app.models.user import User
 from app.models.account import Account
 from app.models.transaction import Transaction
+from app.models.budget import Budget
 from app.models.prediction import Prediction
 
 
@@ -30,7 +30,7 @@ def get_db():
     """
     Dependency function to get database session.
     Yields a database session and ensures it's closed after use.
-    
+
     Usage in endpoints:
         @app.get("/items")
         def read_items(db: Session = Depends(get_db)):

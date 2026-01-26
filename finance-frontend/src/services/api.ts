@@ -26,7 +26,7 @@ class ApiService {
         'Content-Type': 'application/json',
       },
       timeout: 30000, // Increased timeout to 30 seconds
-      withCredentials: false, // IMPORTANT: Set to false for CORS with JWT
+      withCredentials: true, // FIXED: Set to true to match backend CORS setting
     });
 
     this.setupInterceptors();
