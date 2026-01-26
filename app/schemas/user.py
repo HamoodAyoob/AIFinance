@@ -63,3 +63,8 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Data extracted from JWT token."""
     user_id: Optional[int] = None
+
+    # Add this to your existing user.py file
+class TokenData(BaseModel):
+    user_id: int
+    email: Optional[str] = None

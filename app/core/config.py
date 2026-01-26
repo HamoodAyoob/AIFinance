@@ -27,11 +27,19 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:8000",
+    ]
+    
+    # Allowed Hosts (Added this)
+    ALLOWED_HOSTS: List[str] = [
+        "localhost",
+        "0.0.0.0",
+        "127.0.0.1",
     ]
 
     # Logging
