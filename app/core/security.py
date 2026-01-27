@@ -142,16 +142,10 @@ def verify_refresh_token(token: str) -> Optional[Dict[str, Any]]:
     except JWTError:
         return None
 
-# CRITICAL: Add missing function - Alternative simpler version
+
 def get_user_id_from_token(token: str) -> Optional[int]:
     """
     Extract user ID from JWT token.
-    
-    Args:
-        token: JWT token string
-        
-    Returns:
-        User ID if token is valid, None otherwise
     """
     try:
         payload = jwt.decode(

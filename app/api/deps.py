@@ -34,16 +34,6 @@ async def get_current_user(
 ) -> User:
     """
     Dependency to get current authenticated user.
-
-    Args:
-        db: Database session
-        token: JWT token from Authorization header
-
-    Returns:
-        User object if token is valid
-
-    Raises:
-        HTTPException: If token is invalid or user not found
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -51,21 +41,42 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    user_id = get_user_id_from_token(token)
-    if user_id is None:
-        logger.error(f"Invalid token or user_id not found in token")
+    try:
+        # Decode the token
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+        
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            logger.error(f"No 'sub' claim in token payload: {payload}")
+            raise credentials_exception
+            
+    except JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
+        raise credentials_exception
+    except Exception as e:
+        logger.error(f"Unexpected error decoding token: {str(e)}")
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
+    # Get user from database
+    try:
+        user = db.query(User).filter(User.id == int(user_id)).first()
+    except ValueError:
+        logger.error(f"Invalid user_id format: {user_id}")
+        raise credentials_exception
+        
     if user is None:
         logger.error(f"User not found with ID: {user_id}")
         raise credentials_exception
 
-    # Force materialization of boolean attributes
-    is_active = user.is_active
-    if not is_active:
+    # Check if user is active
+    if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Inactive user"
         )
 
     return user

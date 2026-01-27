@@ -3,8 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Dict, Any
+from jose import jwt
 
-from app.api.deps import get_db
+from app.api.deps import get_db, oauth2_scheme
 from app.core.config import settings
 from app.core.security import (
     verify_password,
@@ -197,6 +198,33 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Token refresh failed: {str(e)}"
         )
+    
+
+@router.get("/debug/token-info")
+def debug_token_info(token: str = Depends(oauth2_scheme)):
+    """
+    DEBUG ONLY: Decode token to see its contents.
+    Remove this in production!
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+        return {
+            "token_valid": True,
+            "payload": payload,
+            "user_id": payload.get("sub"),
+            "email": payload.get("email"),
+            "token_type": payload.get("type"),
+            "expires_at": payload.get("exp")
+        }
+    except Exception as e:
+        return {
+            "token_valid": False,
+            "error": str(e)
+        }
 
 
 @router.post("/logout")

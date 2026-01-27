@@ -181,29 +181,32 @@ class ApiService {
   // Auth endpoints - FIXED: Use proper login format
   async login(email: string, password: string) {
     try {
-      // Use FormData as required by FastAPI OAuth2PasswordRequestForm
       const formData = new FormData();
-      formData.append('username', email);  // FastAPI expects 'username' field
+      formData.append('username', email);
       formData.append('password', password);
-      
+
       const response = await this.axiosInstance.post('/api/v1/auth/login', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
+      // Log for debugging
+      console.log('Login response:', response.data);
+
       if (response.data.access_token) {
         localStorage.setItem('access_token', response.data.access_token);
         if (response.data.refresh_token) {
           localStorage.setItem('refresh_token', response.data.refresh_token);
         }
         toast.success('Login successful! 🎉');
+      } else {
+        console.error('No access token in response');
       }
-      
+
       return response.data;
     } catch (error: any) {
-      const errorMsg = error.response?.data?.detail || 'Login failed. Please check your credentials.';
-      toast.error(errorMsg);
+      console.error('Login error:', error);
       throw error;
     }
   }
