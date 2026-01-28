@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 from jose import jwt
+from pydantic import BaseModel
 
 from app.api.deps import get_db, oauth2_scheme
 from app.core.config import settings
@@ -20,20 +21,15 @@ from app.schemas.user import UserCreate, User as UserSchema, Token, TokenData
 router = APIRouter()
 
 
+# Schema for refresh token request
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 @router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user.
-    
-    Args:
-        user_in: User registration data
-        db: Database session
-        
-    Returns:
-        Created user object
-        
-    Raises:
-        HTTPException: If email already registered
     """
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_in.email).first()
@@ -68,18 +64,6 @@ def login(
 ):
     """
     Login and get access token.
-    
-    OAuth2 compatible token login, get an access token for future requests.
-    
-    Args:
-        db: Database session
-        form_data: OAuth2 form with username (email) and password
-        
-    Returns:
-        Access token and refresh token
-        
-    Raises:
-        HTTPException: If credentials are incorrect
     """
     # Find user by email (username in form_data is email)
     user = db.query(User).filter(User.email == form_data.username).first()
@@ -125,29 +109,33 @@ def login(
     }
 
 
-# CRITICAL: Add refresh token endpoint
-@router.post("/refresh")
-def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+# FIXED: Proper refresh token endpoint that accepts JSON
+@router.post("/refresh", response_model=Token)
+def refresh_token(
+    request: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
     """
     Refresh access token using refresh token.
     
-    Args:
-        refresh_token: Refresh token string
-        db: Database session
-        
-    Returns:
-        New access token
-        
-    Raises:
-        HTTPException: If refresh token is invalid
+    Accepts JSON body with refresh_token field.
     """
     try:
+        refresh_token = request.refresh_token
+        
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Refresh token is required"
+            )
+        
         # Verify refresh token
         payload = verify_refresh_token(refresh_token)
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
             )
         
         user_id = payload.get("sub")
@@ -178,12 +166,14 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
             expires_delta=access_token_expires
         )
         
-        # Create new refresh token (optional: rotate refresh tokens)
+        # Create new refresh token (rotate refresh tokens for security)
         refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         new_refresh_token = create_refresh_token(
             data={"sub": str(user.id), "email": user.email},
             expires_delta=refresh_token_expires
         )
+        
+        print(f"✅ Token refresh successful for user {user.email}")
         
         return {
             "access_token": access_token,
@@ -194,11 +184,12 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
+        print(f"❌ Token refresh error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Token refresh failed: {str(e)}"
         )
-    
+
 
 @router.get("/debug/token-info")
 def debug_token_info(token: str = Depends(oauth2_scheme)):
@@ -218,7 +209,9 @@ def debug_token_info(token: str = Depends(oauth2_scheme)):
             "user_id": payload.get("sub"),
             "email": payload.get("email"),
             "token_type": payload.get("type"),
-            "expires_at": payload.get("exp")
+            "expires_at": payload.get("exp"),
+            "expires_at_readable": datetime.fromtimestamp(payload.get("exp")).isoformat() if payload.get("exp") else None,
+            "is_expired": payload.get("exp") < datetime.now().timestamp() if payload.get("exp") else None,
         }
     except Exception as e:
         return {
@@ -234,8 +227,5 @@ def logout():
     
     Note: With JWT tokens, logout is handled client-side by removing the token.
     This endpoint exists for API completeness.
-    
-    Returns:
-        Success message
     """
     return {"message": "Successfully logged out"}

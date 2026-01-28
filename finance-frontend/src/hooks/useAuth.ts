@@ -33,30 +33,48 @@ export const useAuth = () => {
   const location = useLocation();
 
   const checkAuth = useCallback(async (showLoading = true) => {
+    console.log('🔍 Checking authentication...');
+
     if (showLoading) {
       setState(prev => ({ ...prev, isLoading: true }));
     }
-    
+
     const token = localStorage.getItem('access_token');
-    
+
     if (!token) {
+      console.log('❌ No token found');
       setState({ user: null, isLoading: false, isAuthenticated: false, error: null });
       return;
     }
 
     try {
+      console.log('📡 Fetching user with token...');
       const response = await apiService.getCurrentUser();
+
+      // CRITICAL FIX: Make sure we have the actual data
+      const userData = response.data;
+
+      console.log('✅ User data received:', userData);
+      console.log('👤 Full name:', userData?.full_name);
+      console.log('📧 Email:', userData?.email);
+
+      if (!userData) {
+        throw new Error('No user data in response');
+      }
+
       setState({
-        user: response.data,
+        user: userData,
         isLoading: false,
         isAuthenticated: true,
         error: null,
       });
-      
-      // Store user data in localStorage for quick access
-      localStorage.setItem('user_data', JSON.stringify(response.data));
+
+      console.log('✅ Auth state updated');
     } catch (error: any) {
+      console.error('❌ Failed to load user:', error);
+
       if (error.response?.status === 401) {
+        console.log('🔒 Token expired, clearing...');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user_data');
@@ -66,25 +84,40 @@ export const useAuth = () => {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    console.log('🔐 Starting login for:', email);
     setState(prev => ({ ...prev, isLoading: true, error: null }));
-    
+
     try {
       const data = await apiService.login(email, password);
-      
+
+      console.log('📥 Login data:', data);
+
       if (data.access_token) {
+        console.log('✅ Login successful, loading user data...');
         toast.success('Welcome back! 🎉');
-        
+
+        // CRITICAL: Wait for user data to load
+        await checkAuth(false);
+
+        // Verify user data loaded
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        console.log('✅ Verified user data:', userData);
+
+        if (!userData.full_name) {
+          console.warn('⚠️ User data loaded but no full_name!');
+        }
+
         // Check if we need to redirect to a specific page
         const from = (location.state as any)?.from?.pathname || '/dashboard';
-        
-        await checkAuth(false);
+
         navigate(from, { replace: true });
         return { success: true };
       }
-      
+
       return { success: false, error: 'No access token received' };
     } catch (error: any) {
       const errorMsg = error.response?.data?.detail || 'Login failed. Please check your credentials.';
+      console.error('❌ Login failed:', errorMsg);
       toast.error(errorMsg);
       return {
         success: false,

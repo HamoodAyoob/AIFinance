@@ -40,10 +40,10 @@ class ApiService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
-        
+
         // Add request start time for performance tracking
         (config as any).metadata = { startTime: Date.now() };
-        
+
         return config;
       },
       (error) => {
@@ -63,12 +63,12 @@ class ApiService {
             console.warn(`Slow API call: ${response.config.url} took ${duration}ms`);
           }
         }
-        
+
         return response;
       },
       async (error: AxiosError) => {
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-        
+
         // Handle network/CORS errors
         if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
           console.error('Network/CORS Error:', {
@@ -76,79 +76,80 @@ class ApiService {
             code: error.code,
             url: originalRequest?.url
           });
-          
+
           // Only show toast if it's not a CORS preflight
           if (originalRequest?.url && !originalRequest.url.includes('/health')) {
             toast.error('Cannot connect to server. Please check if backend is running on port 8000.');
           }
           return Promise.reject(error);
         }
-        
-        // Handle 401 Unauthorized
+
+        // Handle 401 Unauthorized - FIXED TOKEN REFRESH
         if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
           originalRequest._retry = true;
-          
+
           try {
             const refreshToken = localStorage.getItem('refresh_token');
             if (refreshToken) {
-              console.log('Attempting token refresh...');
-              
-              // Use FormData for refresh token endpoint (compatible with FastAPI)
-              const formData = new FormData();
-              formData.append('refresh_token', refreshToken);
-              
-              const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, formData, {
-                headers: {
-                  'Content-Type': 'multipart/form-data',
-                },
-              });
-              
-              const { access_token, refresh_token } = response.data;
-              
+              console.log('🔄 Attempting token refresh...');
+
+              // FIXED: Use JSON instead of FormData
+              const response = await axios.post(
+                `${API_BASE_URL}/api/v1/auth/refresh`,
+                { refresh_token: refreshToken },
+                {
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+
+              const { access_token, refresh_token: new_refresh_token } = response.data;
+
               if (access_token) {
                 localStorage.setItem('access_token', access_token);
-                if (refresh_token) {
-                  localStorage.setItem('refresh_token', refresh_token);
+                if (new_refresh_token) {
+                  localStorage.setItem('refresh_token', new_refresh_token);
                 }
-                
-                console.log('Token refresh successful');
-                
+
+                console.log('✅ Token refresh successful');
+
                 // Retry original request with new token
                 originalRequest.headers = {
                   ...originalRequest.headers,
                   Authorization: `Bearer ${access_token}`,
                 };
-                
+
                 return this.axiosInstance(originalRequest);
               }
             }
           } catch (refreshError: any) {
-            console.error('Token refresh failed:', refreshError);
+            console.error('❌ Token refresh failed:', refreshError);
             // Clear tokens and redirect to login
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            
+            localStorage.removeItem('user_data');
+
             toast.error('Session expired. Please login again.');
-            
+
             // Redirect to login page
             if (window.location.pathname !== '/login') {
               window.location.href = '/login';
             }
           }
         }
-        
+
         // Handle other errors
         if (error.response) {
           const { status, data } = error.response as any;
-          
+
           // Don't show toast for 0 status (CORS preflight) or 401 (handled above)
           if (status !== 0 && status !== 401) {
             const errorMessage = this.getErrorMessage(status, data);
             toast.error(errorMessage);
           }
         }
-        
+
         return Promise.reject(error);
       }
     );
@@ -181,6 +182,8 @@ class ApiService {
   // Auth endpoints - FIXED: Use proper login format
   async login(email: string, password: string) {
     try {
+      console.log('🔐 Logging in...', email);
+
       const formData = new FormData();
       formData.append('username', email);
       formData.append('password', password);
@@ -191,22 +194,33 @@ class ApiService {
         },
       });
 
-      // Log for debugging
-      console.log('Login response:', response.data);
+      console.log('📥 Login response:', response.data);
 
       if (response.data.access_token) {
         localStorage.setItem('access_token', response.data.access_token);
         if (response.data.refresh_token) {
           localStorage.setItem('refresh_token', response.data.refresh_token);
         }
+
+        console.log('✅ Tokens stored');
+
+        // CRITICAL: Immediately fetch user data after login
+        try {
+          await this.getCurrentUser();
+          console.log('✅ User data loaded after login');
+        } catch (userError) {
+          console.error('❌ Failed to load user after login:', userError);
+          // Don't fail the login, user can retry
+        }
+
         toast.success('Login successful! 🎉');
       } else {
-        console.error('No access token in response');
+        console.error('❌ No access token in response');
       }
 
       return response.data;
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       throw error;
     }
   }
@@ -214,17 +228,18 @@ class ApiService {
   // FIXED: Add missing refresh token method
   async refreshToken(refreshToken: string) {
     try {
-      const formData = new FormData();
-      formData.append('refresh_token', refreshToken);
-      
-      const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
+      const response = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`,
+        { refresh_token: refreshToken },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
       return response.data;
     } catch (error) {
+      console.error('Token refresh failed:', error);
       throw error;
     }
   }
@@ -260,16 +275,42 @@ class ApiService {
 
   async getCurrentUser() {
     try {
+      console.log('🔍 Fetching user data...');
+
       const response = await this.axiosInstance.get('/api/v1/users/me');
-      // Store user data in localStorage for quick access
-      localStorage.setItem('user', JSON.stringify(response.data));
-      return response.data;
+
+      console.log('📥 API Response:', response);
+      console.log('👤 User Data:', response.data);
+
+      // CRITICAL FIX: Check if data exists before storing
+      if (response.data && typeof response.data === 'object') {
+        const userData = response.data;
+
+        // Store user data properly
+        localStorage.setItem('user_data', JSON.stringify(userData));
+
+        console.log('✅ User data stored successfully:', userData);
+        console.log('✅ Full name:', userData.full_name);
+
+        return response; // Return the full response, not just data
+      } else {
+        console.error('❌ No data in response:', response);
+        throw new Error('No user data in response');
+      }
     } catch (error: any) {
+      console.error('❌ Failed to get user data:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+
       // If unauthorized, clear tokens
       if (error.response?.status === 401) {
+        console.log('🔒 Unauthorized - clearing tokens');
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('user_data');
       }
       throw error;
     }

@@ -250,14 +250,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               border: `2px solid ${alpha('#ffffff', 0.2)}`,
             }}
           >
-            {user?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
+            {user?.full_name?.charAt(0) || user?.email?.split('@')[0]?.charAt(0).toUpperCase() || 'U'}
           </Avatar>
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" fontWeight={600} noWrap>
-              {user?.full_name || 'User'}
+              {user?.full_name || user?.email?.split('@')[0] || 'User'}
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
-              {user?.email}
+              {user?.email || 'No email'}
             </Typography>
             <Chip 
               label="PRO" 
@@ -497,7 +497,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   background: theme.palette.gradient.primary,
                 }}
               >
-                {user?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
+                {user?.full_name?.charAt(0) || user?.email?.split('@')[0]?.charAt(0).toUpperCase() || 'U'}
               </Avatar>
               <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                 <Typography variant="body2" fontWeight={600}>
