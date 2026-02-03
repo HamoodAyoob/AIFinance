@@ -36,7 +36,6 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
-tests/
 
 # Machine Learning Models (Auto-generated)
 app/ml_models/saved_models/*.pkl
