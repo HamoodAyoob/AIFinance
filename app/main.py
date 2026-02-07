@@ -115,20 +115,31 @@ app = FastAPI(
 )
 
 # Configure CORS
-origins = settings.BACKEND_CORS_ORIGINS
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]   
 
-# Handle different origin formats
-if isinstance(origins, str):
-    try:
-        # If it's a string, try to parse it as JSON
-        origins = json.loads(origins)
-    except json.JSONDecodeError:
-        # If not valid JSON, split by comma
-        origins = [origin.strip() for origin in origins.split(",")]
+# Get additional origins from settings
+if hasattr(settings, 'BACKEND_CORS_ORIGINS'):
+    backend_origins = settings.BACKEND_CORS_ORIGINS
+    if isinstance(backend_origins, str):
+        try:
+            backend_origins = json.loads(backend_origins)
+        except:
+            backend_origins = [o.strip() for o in backend_origins.split(',')]
+    
+    if isinstance(backend_origins, list):
+        origins.extend(backend_origins)
 
-# Ensure we have a list
-if not isinstance(origins, list):
-    origins = []
+# Remove duplicates
+origins = list(set(origins))
+
+logger.info(f"CORS allowed origins: {origins}")
 
 # Add default origins if empty or not a list
 default_origins = [
@@ -143,21 +154,11 @@ default_origins = [
     "*",  # Fallback to allow all origins during development
 ]
 
-# Combine with defaults if origins is empty
-if not origins:
-    origins = default_origins
-else:
-    # Add any missing defaults
-    for default in default_origins:
-        if default not in origins:
-            origins.append(default)
-
-logger.info(f"CORS allowed origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=origins,  # Use the specific origins list WITHOUT "*"
+    allow_credentials=True,  # Keep this for cookies/tokens
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
