@@ -118,7 +118,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { 
       text: 'Budgets', 
       icon: <TrendingUpIcon />, 
-      path: '/budgets',
+      path: '/budget',
       color: theme.palette.warning.main,
       description: 'Spending Limits'
     },

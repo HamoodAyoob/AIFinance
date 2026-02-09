@@ -185,14 +185,24 @@ const Dashboard: React.FC = () => {
       }))
     : [];
 
-  const monthlyData = [
-    { month: 'Jan', income: 4000, expenses: 2400 },
-    { month: 'Feb', income: 3000, expenses: 1398 },
-    { month: 'Mar', income: 2000, expenses: 9800 },
-    { month: 'Apr', income: 2780, expenses: 3908 },
-    { month: 'May', income: 1890, expenses: 4800 },
-    { month: 'Jun', income: 2390, expenses: 3800 },
-  ];
+  // Build monthly data from actual transactions
+  const monthlyData = transactionsData?.data?.length ? 
+    // Group transactions by date and calculate income/expenses
+    Object.values(
+      (transactionsData?.data || []).reduce((acc: any, transaction: any) => {
+        const date = new Date(transaction.transaction_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (!acc[date]) {
+          acc[date] = { date, income: 0, expenses: 0 };
+        }
+        if (transaction.transaction_type === 'income') {
+          acc[date].income += transaction.amount;
+        } else {
+          acc[date].expenses += transaction.amount;
+        }
+        return acc;
+      }, {})
+    )
+    : [];
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -201,32 +211,32 @@ const Dashboard: React.FC = () => {
 
   const quickStats = [
     { 
-      label: 'AI Accuracy', 
-      value: '94%', 
+      label: 'Total Transactions', 
+      value: recentTransactions.length.toString(), 
       icon: <Award size={20} />, 
       color: '#8b5cf6',
-      trend: '+2.3%'
+      trend: '0'
     },
     { 
-      label: 'Active Users', 
-      value: '1.2K', 
+      label: 'Total Income', 
+      value: `$${animatedNumbers.income.toLocaleString()}`, 
       icon: <Users size={20} />, 
       color: '#06b6d4',
-      trend: '+15%'
+      trend: '0'
     },
     { 
-      label: 'Goals Met', 
-      value: '78%', 
+      label: 'Total Expenses', 
+      value: `$${animatedNumbers.expenses.toLocaleString()}`, 
       icon: <Target size={20} />, 
       color: '#10b981',
-      trend: '+5.1%'
+      trend: '0'
     },
     { 
-      label: 'Processing Speed', 
-      value: '0.2s', 
+      label: 'Net Balance', 
+      value: `$${animatedNumbers.net.toLocaleString()}`, 
       icon: <Zap size={20} />, 
       color: '#f59e0b',
-      trend: '-40ms'
+      trend: '0'
     },
   ];
 

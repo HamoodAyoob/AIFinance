@@ -32,6 +32,7 @@ import {
   InputLabel,
   Select,
   Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -52,6 +53,7 @@ import {
   Download as DownloadIcon,
   Cached as CachedIcon,
   Category as CategoryIcon,
+  AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -61,7 +63,7 @@ import { format, subDays, subMonths } from 'date-fns';
 import { toast } from 'react-toastify';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'; // Fixed import
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import {
   BarChart,
   Bar,
@@ -73,7 +75,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend, // Add this import
+  Legend,
 } from 'recharts';
 
 interface Transaction {
@@ -142,17 +144,72 @@ const Transactions: React.FC = () => {
   });
   const [bulkSelect, setBulkSelect] = useState<number[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [isCategorizingAI, setIsCategorizingAI] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<{ category: string; confidence: number } | null>(null);
+  const [descriptionDebounce, setDescriptionDebounce] = useState<NodeJS.Timeout | null>(null);
+
   const theme = useTheme();
   const queryClient = useQueryClient();
 
-  const { 
-    register, 
-    handleSubmit, 
-    reset, 
-    control, 
-    watch, // Add watch here
-    formState: { errors } 
-  } = useForm<TransactionFormData>();
+  // Fetch accounts FIRST to get default account
+  const { data: accountsData, isLoading: isLoadingAccounts } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: () => apiService.getAccounts(),
+  });
+
+  const accounts = accountsData?.data || [];
+  const defaultAccountId = accounts.length > 0 ? accounts[0].id : 1;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useForm<TransactionFormData>({
+    defaultValues: {
+      description: '',
+      amount: 0,
+      transaction_type: 'expense',
+      category: 'Other',
+      transaction_date: new Date(),
+      account_id: 1, // 🔥 FIX: Start with static value, update when accounts load
+    }
+  });
+
+  const watchDescription = watch('description');
+  const watchCategory = watch('category');
+  const watchAccountId = watch('account_id');
+
+  // 🔥 FIX: Update account_id when accounts load
+  useEffect(() => {
+    if (accounts.length > 0 && !watchAccountId) {
+      setValue('account_id', accounts[0].id);
+    }
+  }, [accounts, watchAccountId, setValue]);
+
+  // 🔥 IMPROVED: Auto-categorize with AI when description changes
+  useEffect(() => {
+    if (descriptionDebounce) {
+      clearTimeout(descriptionDebounce);
+    }
+
+    if (watchDescription && watchDescription.length > 3 && !editingTransaction) {
+      const timeout = setTimeout(() => {
+        handleCategorizeWithAI(watchDescription, true);
+      }, 1500); // Increased to 1.5s for better UX
+
+      setDescriptionDebounce(timeout);
+    }
+
+    return () => {
+      if (descriptionDebounce) {
+        clearTimeout(descriptionDebounce);
+      }
+    };
+  }, [watchDescription]);
 
   // Fetch transactions
   const { data: transactionsData, isLoading: isLoadingTransactions } = useQuery({
@@ -162,8 +219,7 @@ const Transactions: React.FC = () => {
       if (filters.type !== 'all') params.transaction_type = filters.type;
       if (filters.category !== 'all') params.category = filters.category;
       if (filters.search) params.search = filters.search;
-      
-      // Calculate date range
+
       let startDate: string | undefined;
       const now = new Date();
       switch (filters.dateRange) {
@@ -181,15 +237,9 @@ const Transactions: React.FC = () => {
           break;
       }
       if (startDate) params.start_date = startDate;
-      
+
       return apiService.getTransactions(params);
     },
-  });
-
-  // Fetch accounts for dropdown
-  const { data: accountsData } = useQuery({
-    queryKey: ['accounts'],
-    queryFn: () => apiService.getAccounts(),
   });
 
   // Fetch transaction summary
@@ -199,7 +249,7 @@ const Transactions: React.FC = () => {
       const params: any = {};
       const now = new Date();
       let startDate: string | undefined;
-      
+
       switch (filters.dateRange) {
         case 'today':
           startDate = format(subDays(now, 1), 'yyyy-MM-dd');
@@ -215,15 +265,9 @@ const Transactions: React.FC = () => {
           break;
       }
       if (startDate) params.start_date = startDate;
-      
+
       return apiService.getTransactionSummary(params);
     },
-  });
-
-  // Fetch categories from ML API
-  const { data: mlCategories } = useQuery({
-    queryKey: ['ml-categories'],
-    queryFn: () => apiService.getCategories(),
   });
 
   // Create transaction mutation
@@ -238,7 +282,15 @@ const Transactions: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
       setOpenDialog(false);
-      reset();
+      setAiSuggestion(null);
+      reset({
+        description: '',
+        amount: 0,
+        transaction_type: 'expense',
+        category: 'Other',
+        transaction_date: new Date(),
+        account_id: defaultAccountId,
+      });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || 'Failed to add transaction');
@@ -258,6 +310,7 @@ const Transactions: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['transaction-summary'] });
       setOpenDialog(false);
       setEditingTransaction(null);
+      setAiSuggestion(null);
       reset();
     },
     onError: (error: any) => {
@@ -278,19 +331,11 @@ const Transactions: React.FC = () => {
     },
   });
 
-  // Categorize using ML
-  const categorizeMutation = useMutation({
-    mutationFn: (description: string) => apiService.categorizeExpense(description),
-  });
-
   const transactions = transactionsData?.data || [];
-  const accounts = accountsData?.data || [];
   const summary = summaryData?.data || { total_income: 0, total_expenses: 0, net: 0, by_category: {} };
-  
-  // Watch the category field
-  const watchedCategory = watch('category');
   const categorySpending = summary.by_category || {};
 
+  // 🔥 FIX: Proper dialog initialization
   const handleOpenDialog = (transaction?: Transaction) => {
     if (transaction) {
       setEditingTransaction(transaction);
@@ -308,21 +353,24 @@ const Transactions: React.FC = () => {
         description: '',
         amount: 0,
         transaction_type: 'expense',
-        category: '',
+        category: 'Other',
         transaction_date: new Date(),
-        account_id: accounts.length > 0 ? accounts[0].id : 0,
+        account_id: accounts.length > 0 ? accounts[0].id : 1, // 🔥 FIX
       });
     }
+    setAiSuggestion(null);
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingTransaction(null);
+    setAiSuggestion(null);
     reset();
   };
 
   const onSubmit = (data: TransactionFormData) => {
+    console.log('📝 Submitting transaction:', data);
     if (editingTransaction) {
       updateTransactionMutation.mutate({ id: editingTransaction.id, data });
     } else {
@@ -339,49 +387,81 @@ const Transactions: React.FC = () => {
   const handleBulkDelete = () => {
     if (bulkSelect.length === 0) return;
     if (window.confirm(`Are you sure you want to delete ${bulkSelect.length} transactions?`)) {
-      // Note: You might want to implement bulk delete in backend
       toast.info('Bulk delete would be implemented with backend support');
       setBulkSelect([]);
     }
   };
 
-  const handleCategorizeWithAI = async (description: string) => {
-    if (!description.trim()) return;
-    
+  // 🔥 IMPROVED: AI Categorization with better error handling
+  const handleCategorizeWithAI = async (description: string, silent: boolean = false) => {
+    if (!description.trim() || description.length < 3) return;
+
     try {
-      const result = await categorizeMutation.mutateAsync(description);
-      if (result.category && result.confidence > 0.6) {
-        reset({ ...watch(), category: result.category });
-        toast.success(`AI suggested: ${result.category} (${(result.confidence * 100).toFixed(0)}% confidence)`);
+      if (!silent) {
+        setIsCategorizingAI(true);
+      }
+
+      console.log('🤖 AI analyzing:', description);
+      const result = await apiService.categorizeExpense(description);
+      console.log('🤖 AI result:', result);
+
+      if (result && result.category && result.confidence > 0.5) {
+        setAiSuggestion({
+          category: result.category,
+          confidence: result.confidence
+        });
+
+        // Auto-apply if confidence is high
+        if (result.confidence > 0.7) {
+          setValue('category', result.category);
+          console.log('✅ Auto-applied category:', result.category);
+          if (!silent) {
+            toast.success(
+              `AI suggested: ${result.category} (${(result.confidence * 100).toFixed(0)}% confidence)`,
+              { autoClose: 2000 }
+            );
+          }
+        } else if (!silent) {
+          toast.info(
+            `AI suggests: ${result.category} (${(result.confidence * 100).toFixed(0)}% confidence). Click to apply.`,
+            { autoClose: 3000 }
+          );
+        }
+      } else if (!silent) {
+        console.warn('⚠️ AI confidence too low:', result);
+        toast.warning('AI could not determine category. Please select manually.');
       }
     } catch (error) {
-      console.error('Categorization failed:', error);
+      console.error('❌ AI categorization failed:', error);
+      if (!silent) {
+        toast.error('AI categorization unavailable. Please select category manually.');
+      }
+    } finally {
+      if (!silent) {
+        setIsCategorizingAI(false);
+      }
+    }
+  };
+
+  const applyAISuggestion = () => {
+    if (aiSuggestion) {
+      setValue('category', aiSuggestion.category);
+      toast.success(`Applied AI suggestion: ${aiSuggestion.category}`);
+      setAiSuggestion(null);
     }
   };
 
   const getCategoryIcon = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'food':
-      case 'food & dining':
-        return <RestaurantIcon />;
-      case 'transport':
-      case 'transportation':
-        return <DirectionsCarIcon />;
-      case 'shopping':
-        return <ShoppingCartIcon />;
-      case 'entertainment':
-        return <AttachMoneyIcon />;
-      case 'bills':
-        return <HomeIcon />;
-      case 'salary':
-      case 'income':
-        return <TrendingUpIcon />;
-      default:
-        return <ReceiptIcon />;
-    }
+    const lower = category.toLowerCase();
+    if (lower.includes('food') || lower.includes('dining')) return <RestaurantIcon />;
+    if (lower.includes('transport')) return <DirectionsCarIcon />;
+    if (lower.includes('shopping')) return <ShoppingCartIcon />;
+    if (lower.includes('entertainment')) return <AttachMoneyIcon />;
+    if (lower.includes('bills') || lower.includes('utilities')) return <HomeIcon />;
+    if (lower.includes('salary') || lower.includes('income')) return <TrendingUpIcon />;
+    return <ReceiptIcon />;
   };
 
-  // Prepare chart data
   const categoryData = Object.entries(summary.by_category || {}).map(([category, amount]) => ({
     category,
     amount,
@@ -411,7 +491,7 @@ const Transactions: React.FC = () => {
                 Transactions
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Track and categorize all your income and expenses
+                Track and categorize all your income and expenses with AI assistance
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
@@ -469,7 +549,7 @@ const Transactions: React.FC = () => {
             {
               title: 'Transactions',
               value: transactions.length.toString(),
-              change: '+24',
+              change: `+${transactions.length}`,
               trend: 'up',
               color: theme.palette.info.main,
               icon: <ReceiptIcon />,
@@ -589,7 +669,7 @@ const Transactions: React.FC = () => {
                       search: '',
                     })}
                   >
-                    Clear Filters
+                    Clear
                   </Button>
                   <Button
                     fullWidth
@@ -604,40 +684,6 @@ const Transactions: React.FC = () => {
             </Grid>
           </CardContent>
         </Card>
-
-        {/* Bulk Actions */}
-        {bulkSelect.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card sx={{ mb: 3, bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography>
-                    <strong>{bulkSelect.length}</strong> transactions selected
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={handleBulkDelete}
-                    >
-                      Delete Selected
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => setBulkSelect([])}
-                    >
-                      Cancel
-                    </Button>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
 
         {/* Main Content */}
         <Grid container spacing={3}>
@@ -693,19 +739,6 @@ const Transactions: React.FC = () => {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell padding="checkbox">
-                              <input
-                                type="checkbox"
-                                checked={bulkSelect.length === transactions.length}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setBulkSelect(transactions.map((t: Transaction) => t.id));
-                                  } else {
-                                    setBulkSelect([]);
-                                  }
-                                }}
-                              />
-                            </TableCell>
                             <TableCell>Description</TableCell>
                             <TableCell>Category</TableCell>
                             <TableCell>Amount</TableCell>
@@ -722,25 +755,8 @@ const Transactions: React.FC = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                sx={{
-                                  '&:hover': {
-                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                  },
-                                }}
+                                component="tr"
                               >
-                                <TableCell padding="checkbox">
-                                  <input
-                                    type="checkbox"
-                                    checked={bulkSelect.includes(transaction.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setBulkSelect([...bulkSelect, transaction.id]);
-                                      } else {
-                                        setBulkSelect(bulkSelect.filter(id => id !== transaction.id));
-                                      }
-                                    }}
-                                  />
-                                </TableCell>
                                 <TableCell>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                     <Box
@@ -835,7 +851,7 @@ const Transactions: React.FC = () => {
             </motion.div>
           </Grid>
 
-          {/* Sidebar - Charts & Summary */}
+          {/* Sidebar - Charts */}
           <Grid item xs={12} md={4}>
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -865,7 +881,6 @@ const Transactions: React.FC = () => {
                           ))}
                         </Pie>
                         <RechartsTooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                        <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </Box>
@@ -891,7 +906,6 @@ const Transactions: React.FC = () => {
                     </ResponsiveContainer>
                   </Box>
 
-                  {/* Quick Stats */}
                   <Box sx={{ mt: 3, pt: 3, borderTop: `1px solid ${alpha('#000', 0.1)}` }}>
                     <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                       Quick Stats
@@ -928,7 +942,21 @@ const Transactions: React.FC = () => {
         {/* Add/Edit Transaction Dialog */}
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
           <DialogTitle>
-            {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="h6" fontWeight={700}>
+                {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
+              </Typography>
+              {aiSuggestion && (
+                <Chip
+                  label={`AI: ${aiSuggestion.category} (${(aiSuggestion.confidence * 100).toFixed(0)}%)`}
+                  icon={<AutoAwesomeIcon />}
+                  color="primary"
+                  size="small"
+                  onClick={applyAISuggestion}
+                  sx={{ cursor: 'pointer' }}
+                />
+              )}
+            </Box>
           </DialogTitle>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogContent>
@@ -940,13 +968,18 @@ const Transactions: React.FC = () => {
                     {...register('description', { required: 'Description is required' })}
                     error={!!errors.description}
                     helperText={errors.description?.message}
-                    onBlur={(e) => {
-                      if (e.target.value && !editingTransaction) {
-                        handleCategorizeWithAI(e.target.value);
-                      }
+                    placeholder="e.g., Coffee at Starbucks, Uber ride, etc."
+                    InputProps={{
+                      endAdornment: isCategorizingAI ? (
+                        <CircularProgress size={20} />
+                      ) : undefined,
                     }}
                   />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    💡 AI will auto-suggest a category as you type
+                  </Typography>
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
@@ -964,6 +997,7 @@ const Transactions: React.FC = () => {
                     }}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Type</InputLabel>
@@ -971,13 +1005,14 @@ const Transactions: React.FC = () => {
                       label="Type"
                       {...register('transaction_type', { required: 'Transaction type is required' })}
                       error={!!errors.transaction_type}
-                      defaultValue="expense"
+                      value={watch('transaction_type') || 'expense'}
                     >
                       <MenuItem value="income">Income</MenuItem>
                       <MenuItem value="expense">Expense</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <Controller
                     name="transaction_date"
@@ -999,6 +1034,7 @@ const Transactions: React.FC = () => {
                     )}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Account</InputLabel>
@@ -1009,48 +1045,71 @@ const Transactions: React.FC = () => {
                         valueAsNumber: true,
                       })}
                       error={!!errors.account_id}
+                      value={watchAccountId || (accounts.length > 0 ? accounts[0].id : 1)}
                     >
-                      {accounts.map((account: any) => (
-                        <MenuItem key={account.id} value={account.id}>
-                          {account.account_name} (${account.balance.toLocaleString()})
+                      {isLoadingAccounts ? (
+                        <MenuItem value={1} disabled>
+                          Loading accounts...
+                        </MenuItem>
+                      ) : accounts.length === 0 ? (
+                        <MenuItem value={1}>
+                          Default Account
+                        </MenuItem>
+                      ) : (
+                        accounts.map((account: any) => (
+                          <MenuItem key={account.id} value={account.id}>
+                            {account.account_name} (${account.balance.toLocaleString()})
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Category *</InputLabel>
+                    <Select
+                      label="Category *"
+                      {...register('category', { required: 'Category is required' })}
+                      error={!!errors.category}
+                      value={watchCategory || 'Other'}
+                    >
+                      {categories.map((cat) => (
+                        <MenuItem key={cat} value={cat}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {getCategoryIcon(cat)}
+                            {cat}
+                            {aiSuggestion?.category === cat && (
+                              <Chip label="AI Suggested" size="small" color="primary" />
+                            )}
+                          </Box>
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      label="Category"
-                      {...register('category', { required: 'Category is required' })}
-                      error={!!errors.category}
-                    >
-                      {categories.map((cat) => (
-                        <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                {watchedCategory && categorySpending[watchedCategory] && (
+
+                {watchCategory && categorySpending[watchCategory] && (
                   <Grid item xs={12}>
-                    <Alert severity="info">
-                      Current spending in this category: ${categorySpending[watchedCategory].toLocaleString()}
+                    <Alert severity="info" icon={<CategoryIcon />}>
+                      Current spending in {watchCategory}: ${categorySpending[watchCategory].toLocaleString()}
                     </Alert>
                   </Grid>
                 )}
+
                 <Grid item xs={12}>
                   <Button
                     fullWidth
                     variant="outlined"
-                    startIcon={<CategoryIcon />}
+                    startIcon={isCategorizingAI ? <CircularProgress size={20} /> : <AutoAwesomeIcon />}
                     onClick={() => {
                       const desc = watch('description');
-                      if (desc) handleCategorizeWithAI(desc);
+                      if (desc) handleCategorizeWithAI(desc, false);
                     }}
-                    disabled={categorizeMutation.isPending}
+                    disabled={isCategorizingAI || !watchDescription}
                   >
-                    {categorizeMutation.isPending ? 'Analyzing...' : 'Suggest Category with AI'}
+                    {isCategorizingAI ? 'AI is analyzing...' : 'Get AI Category Suggestion'}
                   </Button>
                 </Grid>
               </Grid>
@@ -1065,44 +1124,11 @@ const Transactions: React.FC = () => {
                 {createTransactionMutation.isPending || updateTransactionMutation.isPending
                   ? 'Saving...'
                   : editingTransaction
-                  ? 'Update Transaction'
-                  : 'Add Transaction'}
+                    ? 'Update Transaction'
+                    : 'Add Transaction'}
               </Button>
             </DialogActions>
           </form>
-        </Dialog>
-
-        {/* Import Dialog */}
-        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Import Transactions</DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Upload CSV file with your transaction data. The file should include columns for:
-            </Typography>
-            <ul>
-              <li><Typography variant="body2">Date (YYYY-MM-DD)</Typography></li>
-              <li><Typography variant="body2">Description</Typography></li>
-              <li><Typography variant="body2">Amount</Typography></li>
-              <li><Typography variant="body2">Category (optional)</Typography></li>
-            </ul>
-            <Box sx={{ mt: 3, p: 3, border: `2px dashed ${alpha('#000', 0.2)}`, borderRadius: 2, textAlign: 'center' }}>
-              <ImportExportIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-              <Typography gutterBottom>Drag & drop your CSV file here</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                or
-              </Typography>
-              <Button variant="contained" component="label">
-                Browse Files
-                <input type="file" hidden accept=".csv" />
-              </Button>
-            </Box>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button onClick={() => setImportDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" disabled>
-              Import
-            </Button>
-          </DialogActions>
         </Dialog>
       </Box>
     </LocalizationProvider>

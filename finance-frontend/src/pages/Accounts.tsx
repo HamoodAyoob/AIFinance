@@ -224,16 +224,14 @@ const Accounts: React.FC = () => {
   };
 
   // Prepare data for charts
-  const balanceHistory = [
-    { date: 'Jan', balance: 12000 },
-    { date: 'Feb', balance: 13500 },
-    { date: 'Mar', balance: 12500 },
-    { date: 'Apr', balance: 14200 },
-    { date: 'May', balance: 13800 },
-    { date: 'Jun', balance: 15000 },
-  ];
+  const balanceHistory = accounts.length ? 
+    accounts.map((account, index) => ({
+      date: `${account.account_name?.substring(0, 3) || 'Acc'} ${index + 1}`,
+      balance: account.balance || 0
+    }))
+    : [];
 
-  const typeDistribution = accounts.reduce((acc: any, account: Account) => {
+  const typeDistribution: Record<string, number> = accounts.reduce((acc: Record<string, number>, account: Account) => {
     acc[account.account_type] = (acc[account.account_type] || 0) + account.balance;
     return acc;
   }, {});
@@ -300,17 +298,17 @@ const Accounts: React.FC = () => {
           },
           {
             title: 'Monthly Change',
-            value: '+$1,250',
-            change: '+8.2%',
-            trend: 'up',
+            value: '$0',
+            change: '0%',
+            trend: 'neutral' as const,
             description: 'Last 30 days',
             color: theme.palette.info.main,
           },
           {
             title: 'Debt',
-            value: '-$4,200',
-            change: '-3.1%',
-            trend: 'down',
+            value: '$0',
+            change: '0%',
+            trend: 'neutral' as const,
             description: 'Credit cards & loans',
             color: theme.palette.error.main,
           },
@@ -550,7 +548,7 @@ const Accounts: React.FC = () => {
                   Account Distribution
                 </Typography>
                 <Box sx={{ mt: 2 }}>
-                  {Object.entries(typeDistribution).map(([type, balance]: [string, any]) => {
+                  {Object.entries(typeDistribution).map(([type, balance]: [string, number]) => {
                     const percentage = (balance / totalBalance) * 100;
                     const color = getAccountColor(type);
                     return (

@@ -16,6 +16,124 @@ export interface ApiError {
   data?: any;
 }
 
+export interface CategoryResult {
+  category: string;
+  confidence: number;
+  description: string;
+}
+
+// Mock AI Categorization Implementation
+// Replace with real ML endpoint when backend is ready
+const categorizeMock = (description: string): CategoryResult => {
+  const lower = description.toLowerCase();
+  
+  // Food & Dining keywords
+  if (lower.match(/(coffee|starbucks|mcdonalds|lunch|dinner|breakfast|restaurant|cafe|pizza|burger|food|eat|meal|brunch)/)) {
+    return {
+      category: 'Food & Dining',
+      confidence: 0.85,
+      description
+    };
+  }
+  
+  // Transportation keywords
+  if (lower.match(/(uber|lyft|taxi|bus|train|metro|gas|fuel|parking|car|transport|ride)/)) {
+    return {
+      category: 'Transportation',
+      confidence: 0.82,
+      description
+    };
+  }
+  
+  // Shopping keywords
+  if (lower.match(/(amazon|shop|store|buy|bought|purchase|mall|clothes|shoes|electronics|online)/)) {
+    return {
+      category: 'Shopping',
+      confidence: 0.78,
+      description
+    };
+  }
+  
+  // Entertainment keywords
+  if (lower.match(/(movie|netflix|spotify|game|concert|theater|cinema|entertainment|music|streaming)/)) {
+    return {
+      category: 'Entertainment',
+      confidence: 0.80,
+      description
+    };
+  }
+  
+  // Bills & Utilities keywords
+  if (lower.match(/(bill|utility|electric|water|internet|phone|rent|mortgage|insurance|subscription)/)) {
+    return {
+      category: 'Bills & Utilities',
+      confidence: 0.88,
+      description
+    };
+  }
+  
+  // Healthcare keywords
+  if (lower.match(/(doctor|hospital|pharmacy|medicine|medical|health|clinic|dental)/)) {
+    return {
+      category: 'Healthcare',
+      confidence: 0.86,
+      description
+    };
+  }
+  
+  // Education keywords
+  if (lower.match(/(tuition|school|college|course|book|education|class|lesson)/)) {
+    return {
+      category: 'Education',
+      confidence: 0.84,
+      description
+    };
+  }
+  
+  // Travel keywords
+  if (lower.match(/(flight|hotel|airbnb|booking|vacation|travel|trip|airline)/)) {
+    return {
+      category: 'Travel',
+      confidence: 0.81,
+      description
+    };
+  }
+  
+  // Salary keywords
+  if (lower.match(/(salary|paycheck|income|wage|payment received)/)) {
+    return {
+      category: 'Salary',
+      confidence: 0.90,
+      description
+    };
+  }
+  
+  // Freelance keywords
+  if (lower.match(/(freelance|gig|contract|project payment|client)/)) {
+    return {
+      category: 'Freelance',
+      confidence: 0.83,
+      description
+    };
+  }
+  
+  // Gifts keywords
+  if (lower.match(/(gift|present|birthday|christmas|donation)/)) {
+    return {
+      category: 'Gifts',
+      confidence: 0.77,
+      description
+    };
+  }
+  
+  // Default to Other with low confidence
+  return {
+    category: 'Other',
+    confidence: 0.45,
+    description
+  };
+};
+
 class ApiService {
   private axiosInstance: AxiosInstance;
 
@@ -317,19 +435,27 @@ class ApiService {
   }
 
   // ML endpoints with better error handling
-  async categorizeExpense(description: string) {
+  /**
+   * Categorize expense description using AI/ML
+   * Currently uses mock implementation - replace with real ML endpoint when ready
+   */
+  async categorizeExpense(description: string): Promise<CategoryResult> {
+    // OPTION 1: Mock implementation (works offline)
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(categorizeMock(description));
+      }, 300); // Simulate network delay
+    });
+
+    /* OPTION 2: Real backend (uncomment when ML service is ready)
     try {
       const response = await this.axiosInstance.post(`/api/v1/ml/categorize?description=${encodeURIComponent(description)}`);
       return response.data;
     } catch (error) {
       console.warn('Categorization service unavailable, using fallback');
-      return {
-        category: 'Other',
-        confidence: 0.5,
-        description: description,
-        fallback: true
-      };
+      return categorizeMock(description);
     }
+    */
   }
 
   async categorizeBatch(descriptions: string[]) {
