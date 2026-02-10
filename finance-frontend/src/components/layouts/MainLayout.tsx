@@ -123,6 +123,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       description: 'Spending Limits'
     },
     { 
+      text: 'Predictions', 
+      icon: <ShowChartIcon />, 
+      path: '/predictions',
+      color: theme.palette.error.main,
+      description: 'AI Forecasting'
+    },
+    { 
       text: 'Settings', 
       icon: <SettingsIcon />, 
       path: '/settings',

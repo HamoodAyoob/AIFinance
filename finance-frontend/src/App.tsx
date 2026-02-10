@@ -14,6 +14,7 @@ import Dashboard from 'pages/Dashboard';
 import Accounts from 'pages/Accounts';
 import Transactions from 'pages/Transactions';
 import Budget from 'pages/Budget';
+import Predictions from 'pages/Predictions';
 import Settings from 'pages/Settings';
 import { useAuth } from 'hooks/useAuth';
 
@@ -127,6 +128,16 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <MainLayout>
                   <Budget />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/predictions" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Predictions />
                 </MainLayout>
               </ProtectedRoute>
             } 
