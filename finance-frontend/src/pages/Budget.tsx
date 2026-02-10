@@ -45,7 +45,6 @@ import {
   CalendarMonth as CalendarIcon,
   Notifications as NotificationsIcon,
   MoreVert as MoreVertIcon,
-  Download as DownloadIcon,
   Refresh as RefreshIcon,
   Insights as InsightsIcon,
 } from '@mui/icons-material';
@@ -290,15 +289,6 @@ const Budget: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                sx={{ borderRadius: 3 }}
-              >
-                Export Report
-              </Button>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
                 variant="contained"
                 startIcon={<AddIcon />}
                 onClick={() => handleOpenDialog()}
@@ -393,7 +383,7 @@ const Budget: React.FC = () => {
       {/* Main Content */}
       <Grid container spacing={3}>
         {/* Budgets List */}
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12}>
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -545,116 +535,7 @@ const Budget: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Budget vs Actual
-                </Typography>
-                <Box sx={{ height: 250, mt: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={budgetComparisonData.slice(0, 5)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.1)} />
-                      <XAxis dataKey="category" />
-                      <YAxis />
-                      <RechartsTooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                      <Legend />
-                      <Bar dataKey="limit" fill={alpha(theme.palette.primary.main, 0.6)} name="Budget Limit" />
-                      <Bar dataKey="spent" fill={theme.palette.error.main} name="Amount Spent" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Monthly Trends
-                </Typography>
-                <Box sx={{ height: 200, mt: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyTrendData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.1)} />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <RechartsTooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="budget"
-                        stroke={theme.palette.primary.main}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        name="Budget"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="actual"
-                        stroke={theme.palette.error.main}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        name="Actual Spending"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Budget Settings
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    Notification Threshold
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Slider
-                      value={notificationThreshold}
-                      onChange={(_, value) => setNotificationThreshold(value as number)}
-                      min={50}
-                      max={100}
-                      step={5}
-                      marks={[
-                        { value: 50, label: '50%' },
-                        { value: 75, label: '75%' },
-                        { value: 100, label: '100%' },
-                      ]}
-                    />
-                    <Typography variant="body1" fontWeight={600}>
-                      {notificationThreshold}%
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                    Receive notifications when budgets reach this percentage
-                  </Typography>
-
-                  <Box sx={{ mt: 3 }}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<NotificationsIcon />}
-                      sx={{ borderRadius: 2 }}
-                    >
-                      Configure Alerts
-                    </Button>
-                  </Box>
-
-                  <Box sx={{ mt: 2 }}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<InsightsIcon />}
-                      sx={{ borderRadius: 2 }}
-                    >
-                      Generate Insights
-                    </Button>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
+            
           </motion.div>
         </Grid>
       </Grid>

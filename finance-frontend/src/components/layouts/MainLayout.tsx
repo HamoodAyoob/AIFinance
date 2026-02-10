@@ -123,27 +123,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       description: 'Spending Limits'
     },
     { 
-      text: 'Predictions', 
-      icon: <ShowChartIcon />, 
-      path: '/predictions',
-      color: theme.palette.error.main,
-      description: 'AI Forecasting'
-    },
-    { 
-      text: 'Market Data', 
-      icon: <MonetizationOnIcon />, 
-      path: '/market',
-      color: '#8b5cf6',
-      description: 'Stocks & Crypto'
-    },
-    { 
-      text: 'Analytics', 
-      icon: <AnalyticsIcon />, 
-      path: '/analytics',
-      color: '#06b6d4',
-      description: 'Advanced Reports'
-    },
-    { 
       text: 'Settings', 
       icon: <SettingsIcon />, 
       path: '/settings',

@@ -37,7 +37,6 @@ import {
   Savings as SavingsIcon,
   AttachMoney as AttachMoneyIcon,
   Refresh as RefreshIcon,
-  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -285,15 +284,7 @@ const Dashboard: React.FC = () => {
                 Refresh
               </Button>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                variant="contained"
-                startIcon={<DownloadIcon />}
-                sx={{ borderRadius: 3 }}
-              >
-                Export Report
-              </Button>
-            </motion.div>
+
           </Box>
         </Box>
       </motion.div>
@@ -476,106 +467,11 @@ const Dashboard: React.FC = () => {
 
       {/* Charts and Content */}
       <Grid container spacing={3}>
-        {/* Income vs Expenses */}
-        <Grid item xs={12} md={8}>
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h6" fontWeight={700}>
-                    Income vs Expenses
-                  </Typography>
-                  <Chip 
-                    label={timeRange} 
-                    size="small" 
-                    sx={{ 
-                      background: alpha(theme.palette.primary.main, 0.1),
-                      color: theme.palette.primary.main,
-                    }}
-                  />
-                </Box>
-                <Box sx={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.1)} />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <RechartsTooltip 
-                        formatter={(value) => [`$${value}`, 'Amount']}
-                        contentStyle={{ borderRadius: 8, border: 'none', boxShadow: theme.shadows[4] }}
-                      />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="income"
-                        stroke={theme.palette.success.main}
-                        fill={alpha(theme.palette.success.main, 0.2)}
-                        strokeWidth={2}
-                        name="Income"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="expenses"
-                        stroke={theme.palette.error.main}
-                        fill={alpha(theme.palette.error.main, 0.2)}
-                        strokeWidth={2}
-                        name="Expenses"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
 
-        {/* Category Distribution */}
-        <Grid item xs={12} md={4}>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-          >
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Category Distribution
-                </Typography>
-                <Box sx={{ height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={spendingByCategory}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="amount"
-                      >
-                        {spendingByCategory.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        formatter={(value) => [`$${value}`, 'Amount']}
-                        contentStyle={{ borderRadius: 8 }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+        
 
         {/* Recent Transactions */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -660,107 +556,7 @@ const Dashboard: React.FC = () => {
           </motion.div>
         </Grid>
 
-        {/* Budget Progress & Predictions */}
-        <Grid item xs={12} md={6}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-          >
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                  <Typography variant="h6" fontWeight={700}>
-                    Budget Progress
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<AddIcon />}
-                    href="/budgets"
-                    sx={{ borderRadius: 3 }}
-                  >
-                    Manage
-                  </Button>
-                </Box>
-                {budgetProgress.map((budget: any) => (
-                  <Box key={budget.budget.id} sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {budget.budget.category}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        ${budget.spent.toFixed(2)} / ${budget.budget.limit_amount.toFixed(2)}
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={Math.min(budget.percentage_used, 100)}
-                      sx={{
-                        height: 10,
-                        borderRadius: 5,
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 5,
-                          background: budget.percentage_used >= 100
-                            ? theme.palette.error.main
-                            : budget.percentage_used >= 80
-                            ? theme.palette.warning.main
-                            : theme.palette.success.main,
-                        },
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {budget.percentage_used.toFixed(1)}% used
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ${budget.remaining.toFixed(2)} remaining
-                      </Typography>
-                    </Box>
-                  </Box>
-                ))}
-                
-                {/* Predictions */}
-                {predictionData?.data && (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <TrendingUp size={20} color={theme.palette.primary.main} />
-                          <Typography variant="subtitle2" fontWeight={700}>
-                            Next Month Prediction
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                          Total: ${predictionData.data.total?.toFixed(2)}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          {Object.entries(predictionData.data.predictions || {}).map(([category, amount]: [string, any]) => (
-                            <Chip
-                              key={category}
-                              label={`${category}: $${amount.toFixed(2)}`}
-                              size="small"
-                              variant="outlined"
-                              sx={{
-                                borderColor: alpha(theme.palette.primary.main, 0.3),
-                                background: alpha(theme.palette.primary.main, 0.05),
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </Box>
-                    </motion.div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+        
       </Grid>
 
       {/* Accounts Overview */}

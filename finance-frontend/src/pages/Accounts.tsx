@@ -514,33 +514,7 @@ const Accounts: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom>
-                  Balance History
-                </Typography>
-                <Box sx={{ height: 200, mt: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={balanceHistory}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.1)} />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <RechartsTooltip
-                        formatter={(value) => [`$${value}`, 'Balance']}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="balance"
-                        stroke={theme.palette.primary.main}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </Box>
-              </CardContent>
-            </Card>
+            
 
             <Card>
               <CardContent>

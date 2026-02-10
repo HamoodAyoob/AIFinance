@@ -39,7 +39,6 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   FilterList as FilterIcon,
-  ImportExport as ImportExportIcon,
   Search as SearchIcon,
   Receipt as ReceiptIcon,
   ShoppingCart as ShoppingCartIcon,
@@ -50,7 +49,6 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   MoreVert as MoreVertIcon,
-  Download as DownloadIcon,
   Cached as CachedIcon,
   Category as CategoryIcon,
   AutoAwesome as AutoAwesomeIcon,
@@ -497,16 +495,6 @@ const Transactions: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 2 }}>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
-                  variant="outlined"
-                  startIcon={<ImportExportIcon />}
-                  onClick={() => setImportDialogOpen(true)}
-                  sx={{ borderRadius: 3 }}
-                >
-                  Import
-                </Button>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenDialog()}
@@ -688,7 +676,7 @@ const Transactions: React.FC = () => {
         {/* Main Content */}
         <Grid container spacing={3}>
           {/* Transactions List */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12}>
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -700,13 +688,7 @@ const Transactions: React.FC = () => {
                     <Typography variant="h6" fontWeight={700}>
                       Recent Transactions
                     </Typography>
-                    <Button
-                      startIcon={<DownloadIcon />}
-                      size="small"
-                      sx={{ borderRadius: 3 }}
-                    >
-                      Export CSV
-                    </Button>
+
                   </Box>
 
                   {isLoadingTransactions ? (
@@ -743,7 +725,6 @@ const Transactions: React.FC = () => {
                             <TableCell>Category</TableCell>
                             <TableCell>Amount</TableCell>
                             <TableCell>Date</TableCell>
-                            <TableCell>Account</TableCell>
                             <TableCell align="right">Actions</TableCell>
                           </TableRow>
                         </TableHead>
@@ -812,11 +793,6 @@ const Transactions: React.FC = () => {
                                     {format(new Date(transaction.transaction_date), 'MMM dd, yyyy')}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2">
-                                    {transaction.account?.account_name || 'Unknown'}
-                                  </Typography>
-                                </TableCell>
                                 <TableCell align="right">
                                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                                     <Tooltip title="Edit">
@@ -858,83 +834,9 @@ const Transactions: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <Card sx={{ mb: 3 }}>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={700} gutterBottom>
-                    Spending by Category
-                  </Typography>
-                  <Box sx={{ height: 300, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={categoryData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="amount"
-                        >
-                          {categoryData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip formatter={(value) => [`$${value}`, 'Amount']} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </CardContent>
-              </Card>
+              
 
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={700} gutterBottom>
-                    Monthly Trends
-                  </Typography>
-                  <Box sx={{ height: 250, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={monthlyTrendData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.1)} />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <RechartsTooltip />
-                        <Legend />
-                        <Bar dataKey="income" fill={theme.palette.success.main} name="Income" />
-                        <Bar dataKey="expenses" fill={theme.palette.error.main} name="Expenses" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-
-                  <Box sx={{ mt: 3, pt: 3, borderTop: `1px solid ${alpha('#000', 0.1)}` }}>
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                      Quick Stats
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="h4" fontWeight={900} color="success.main">
-                            ${summary.total_income.toLocaleString()}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Total Income
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: alpha(theme.palette.error.main, 0.1), borderRadius: 2 }}>
-                          <Typography variant="h4" fontWeight={900} color="error.main">
-                            ${summary.total_expenses.toLocaleString()}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Total Expenses
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                </CardContent>
-              </Card>
+              
             </motion.div>
           </Grid>
         </Grid>
