@@ -10,17 +10,16 @@ router = APIRouter()
 
 
 @router.get("/me", response_model=UserSchema)
-def read_current_user(current_user: User = Depends(get_current_active_user)):
-    """
-    Get current logged-in user details.
-    
-    Args:
-        current_user: Current authenticated user
-        
-    Returns:
-        User object
-    """
-    return current_user
+def read_current_user(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        db.commit()  # ✅ Commit to close transaction
+        return current_user
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(...)
 
 
 @router.put("/me", response_model=UserSchema)
