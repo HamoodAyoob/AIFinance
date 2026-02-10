@@ -11,6 +11,10 @@ import ProtectedRoute from 'components/ProtectedRoute';
 import Login from 'pages/Login';
 import Register from 'pages/Register';
 import Dashboard from 'pages/Dashboard';
+import Accounts from 'pages/Accounts';
+import Transactions from 'pages/Transactions';
+import Budget from 'pages/Budget';
+import Settings from 'pages/Settings';
 import { useAuth } from 'hooks/useAuth';
 
 // Scroll to top on route change
@@ -93,6 +97,46 @@ const App: React.FC = () => {
               <ProtectedRoute>
                 <MainLayout>
                   <Dashboard />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/accounts" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Accounts />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/transactions" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Transactions />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/budget" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Budget />
+                </MainLayout>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Settings />
                 </MainLayout>
               </ProtectedRoute>
             } 
